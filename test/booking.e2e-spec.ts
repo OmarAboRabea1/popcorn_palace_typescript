@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -19,6 +19,19 @@ describe('BookingController (e2e)', () => {
   const userId = uuidv4();
 
   beforeAll(async () => {
+    // Suppress specific expected errors in logs
+    jest.spyOn(Logger.prototype, 'error').mockImplementation((message, stack, context) => {
+      if (
+        typeof message === 'string' &&
+        (
+          message.includes('already booked') ||
+          message.includes('not found')
+        )
+      ) {
+        return; // Don't log expected error messages
+      }
+    });
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

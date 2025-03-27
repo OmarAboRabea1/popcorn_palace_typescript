@@ -21,11 +21,6 @@ export class BookingService {
     try {
       const { showtimeId, seatNumber, userId } = createBookingDto;
 
-      if (!showtimeId || !seatNumber || !userId) {
-        this.logger.warn(`createBooking: Missing required fields`);
-        throw new BadRequestException('Missing required fields to book a ticket');
-      }
-
       const showtime = await this.showtimeRepository.findOne({ where: { id: showtimeId } });
       if (!showtime) {
         this.logger.warn(`createBooking: Showtime with ID ${showtimeId} not found`);
@@ -71,11 +66,6 @@ export class BookingService {
 
   async getBookingById(id: string): Promise<Booking> {
     try {
-      if (!id) {
-        this.logger.warn(`getBookingById: Booking ID is required`);
-        throw new BadRequestException('Booking ID must be provided');
-      }
-
       const booking = await this.bookingRepository.findOne({ where: { id } });
       if (!booking) {
         this.logger.warn(`getBookingById: Booking with ID ${id} not found`);
@@ -94,11 +84,6 @@ export class BookingService {
 
   async getBookingsForShowtime(showtimeId: number): Promise<Booking[]> {
     try {
-      if (!showtimeId || isNaN(showtimeId)) {
-        this.logger.warn(`getBookingsForShowtime: Invalid showtime ID`);
-        throw new BadRequestException('Invalid showtime ID');
-      }
-
       const result = await this.bookingRepository.find({
         where: { showtime: { id: showtimeId } },
       });
@@ -116,11 +101,6 @@ export class BookingService {
 
   async cancelBooking(id: string): Promise<void> {
     try {
-      if (!id) {
-        this.logger.warn(`cancelBooking: Booking ID is required`);
-        throw new BadRequestException('Booking ID must be provided');
-      }
-
       const booking = await this.getBookingById(id);
       await this.bookingRepository.remove(booking);
       this.logger.log(`cancelBooking: Booking ${id} canceled successfully`);

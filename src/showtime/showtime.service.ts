@@ -19,11 +19,6 @@ export class ShowtimeService {
 
   async createShowtime(createShowtimeDto: CreateShowtimeDto): Promise<any> {
     try {
-      if (!createShowtimeDto?.movieId || !createShowtimeDto?.theater || !createShowtimeDto?.startTime || !createShowtimeDto?.endTime || createShowtimeDto.price == null) {
-        this.logger.warn('createShowtime: Missing required fields in DTO');
-        throw new BadRequestException('Missing required fields to create a showtime');
-      }
-
       const movie = await this.movieRepository.findOne({ where: { id: createShowtimeDto.movieId } });
 
       if (!movie) {
@@ -55,9 +50,6 @@ export class ShowtimeService {
       const saved = await this.showtimeRepository.save(newShowtime);
       this.logger.log(`createShowtime: Showtime ${saved.id} created successfully`);
   
-  
-    // Return in expected format
-
     // Return in expected format
       return {
         id: saved.id,
@@ -76,11 +68,6 @@ export class ShowtimeService {
   }
 
   async getShowtimeById(id: number): Promise<any> {
-    if (!id || isNaN(id)) {
-      this.logger.warn(`getShowtimeById: Invalid showtime ID: ${id}`);
-      throw new BadRequestException('Invalid showtime ID');
-    }
-
     const showtime = await this.showtimeRepository.findOne({
       where: { id },
       relations: ['movie'],
@@ -101,13 +88,6 @@ export class ShowtimeService {
       endTime: showtime.endTime,
     };
   }
-  
-  
-
-
-
-
-
   async getAllShowtimes(): Promise<Showtime[]> {
     try {
       const result = await this.showtimeRepository.find({ relations: ['movie'] });
@@ -121,17 +101,11 @@ export class ShowtimeService {
 
   async updateShowtime(id: number, updateDto: UpdateShowtimeDto): Promise<any> {
     try {
-      if (!id || isNaN(id)) {
-        this.logger.warn('updateShowtime: Invalid or missing showtime ID');
-        throw new BadRequestException('Invalid or missing showtime ID');
-      }
-
       const showtime = await this.showtimeRepository.findOne({ where: { id } });
       if (!showtime) {
         this.logger.warn(`updateShowtime: Showtime with ID ${id} not found`);
         throw new NotFoundException(`Showtime with ID ${id} not found`);
       }
-
       const movie = await this.movieRepository.findOne({ where: { id: updateDto.movieId } });
       if (!movie) {
         this.logger.warn(`updateShowtime: Movie with ID ${updateDto.movieId} not found`);

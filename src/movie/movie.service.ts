@@ -11,14 +11,9 @@ export class MovieService {
   constructor(
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
-  ) {}
+  ) { }
 
   async createMovie(createMovieDto: CreateMovieDto): Promise<Movie> {
-    if (!createMovieDto.title || !createMovieDto.genre || !createMovieDto.releaseYear) {
-      this.logger.warn('createMovie: Missing required movie fields');
-      throw new BadRequestException('Missing required movie fields');
-    }
-
     const existing = await this.movieRepository.findOne({
       where: { title: createMovieDto.title },
     });
@@ -51,11 +46,6 @@ export class MovieService {
   }
 
   async getMovieById(id: number): Promise<Movie> {
-    if (!id || isNaN(id)) {
-      this.logger.warn(`getMovieById: Invalid movie ID - ${id}`);
-      throw new BadRequestException('Invalid movie ID');
-    }
-
     const movie = await this.movieRepository.findOne({ where: { id } });
     if (!movie) {
       this.logger.warn(`getMovieById: Movie with ID ${id} not found`);
@@ -67,11 +57,6 @@ export class MovieService {
   }
 
   async updateMovieByTitle(title: string, updateMovieDto: UpdateMovieDto): Promise<void> {
-    if (!title) {
-      this.logger.warn('updateMovieByTitle: Movie title must be provided');
-      throw new BadRequestException('Movie title must be provided for update');
-    }
-
     const movie = await this.movieRepository.findOne({ where: { title } });
     if (!movie) {
       this.logger.warn(`updateMovieByTitle: Movie with title '${title}' not found`);
@@ -88,11 +73,6 @@ export class MovieService {
   }
 
   async deleteMovieByTitle(title: string): Promise<void> {
-    if (!title) {
-      this.logger.warn('deleteMovieByTitle: Movie title must be provided');
-      throw new BadRequestException('Movie title must be provided for deletion');
-    }
-
     const movie = await this.movieRepository.findOne({ where: { title } });
     if (!movie) {
       this.logger.warn(`deleteMovieByTitle: Movie with title '${title}' not found`);

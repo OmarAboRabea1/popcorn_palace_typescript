@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Showtime } from './entities/showtime.entity';
 import { Movie } from '../movie/entities/movie.entity';
 import { Repository } from 'typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { CreateShowtimeDto, UpdateShowtimeDto } from './dto/showtime.dto';
 import { sampleMovie, sampleShowtime, sampleShowtimeResult } from '../../src/testsSamples';
 
@@ -33,6 +33,21 @@ describe('ShowtimeService', () => {
     };
 
     beforeEach(async () => {
+        // Suppress expected logger errors during tests
+        jest.spyOn(Logger.prototype, 'error').mockImplementation((message) => {
+            if (
+                typeof message === 'string' &&
+                (
+                    message.includes('not found') ||
+                    message.includes('overlaps') ||
+                    message.includes('Failed to') ||
+                    message.includes('already exists')
+                )
+            ) {
+                return;
+            }
+        });
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ShowtimeService,
@@ -51,6 +66,15 @@ describe('ShowtimeService', () => {
     });
 
     describe('createShowtime', () => {
+
+        const dto: CreateShowtimeDto = {
+            movieId: 1,
+            price: 20,
+            theater: 'A',
+            startTime: new Date(),
+            endTime: new Date(),
+        };
+
         it('should throw if movie is not found', async () => {
             mockMovieRepo.findOne.mockResolvedValue(null);
             const dto = { movieId: 1, price: 20, theater: 'A', startTime: new Date(), endTime: new Date() };
@@ -66,14 +90,6 @@ describe('ShowtimeService', () => {
                 andWhere: jest.fn().mockReturnThis(),
                 getOne: jest.fn().mockResolvedValue(sampleShowtime),
             });
-
-            const dto: CreateShowtimeDto = {
-                movieId: 1,
-                price: 20,
-                theater: 'A',
-                startTime: new Date(),
-                endTime: new Date(),
-            };
 
             await expect(service.createShowtime(dto)).rejects.toThrow(ConflictException);
         });
@@ -91,6 +107,21 @@ describe('ShowtimeService', () => {
             expect(result).toEqual(sampleShowtimeResult);
             expect(mockShowtimeRepo.save).toHaveBeenCalled();
         });
+
+        it('should throw InternalServerErrorException if unexpected error occurs', async () => {
+            // Simulate unexpected error (e.g., DB crash)
+            mockMovieRepo.findOne.mockResolvedValue(sampleMovie);
+            mockShowtimeRepo.createQueryBuilder = jest.fn().mockReturnValue({
+                where: jest.fn().mockReturnThis(),
+                andWhere: jest.fn().mockReturnThis(),
+                getOne: jest.fn().mockResolvedValue(null),
+            });
+            mockShowtimeRepo.create.mockReturnValue(sampleShowtime);
+            mockShowtimeRepo.save.mockRejectedValue(new Error('DB failure'));
+
+            await expect(service.createShowtime(dto)).rejects.toThrow(InternalServerErrorException);
+        });
+
     });
 
     describe('getShowtimeById', () => {
@@ -112,6 +143,12 @@ describe('ShowtimeService', () => {
             const result = await service.getAllShowtimes();
             expect(result).toEqual([sampleShowtime]);
         });
+
+        it('should throw InternalServerErrorException if find fails', async () => {
+            mockShowtimeRepo.find.mockRejectedValue(new Error('DB failure'));
+            await expect(service.getAllShowtimes()).rejects.toThrow(InternalServerErrorException);
+            expect(mockShowtimeRepo.find).toHaveBeenCalled();
+        });
     });
 
     describe('updateShowtime', () => {
@@ -129,20 +166,32 @@ describe('ShowtimeService', () => {
 
         it('should throw if showtime is not found', async () => {
             mockShowtimeRepo.findOne.mockResolvedValueOnce(null); // no showtime
-        
+
             await expect(
-              service.updateShowtime(1, { movieId: 1, price: 80 } as UpdateShowtimeDto),
+                service.updateShowtime(1, { movieId: 1, price: 80 } as UpdateShowtimeDto),
             ).rejects.toThrow(NotFoundException);
-          });
-        
-          it('should throw if movie is not found', async () => {
+        });
+
+        it('should throw if movie is not found', async () => {
             mockShowtimeRepo.findOne.mockResolvedValueOnce(sampleShowtime); // valid showtime
             mockMovieRepo.findOne.mockResolvedValue(null); // no movie
-        
+
             await expect(
-              service.updateShowtime(1, { movieId: 99, price: 80 } as UpdateShowtimeDto),
+                service.updateShowtime(1, { movieId: 99, price: 80 } as UpdateShowtimeDto),
             ).rejects.toThrow(NotFoundException);
-          });
+        });
+
+        it('should throw InternalServerErrorException if saving fails unexpectedly', async () => {
+            mockShowtimeRepo.findOne.mockResolvedValueOnce(sampleShowtime); // showtime exists
+            mockMovieRepo.findOne.mockResolvedValue(sampleMovie); // movie exists
+
+            mockShowtimeRepo.merge.mockReturnValue({ ...sampleShowtime, price: 99 });
+            mockShowtimeRepo.save.mockRejectedValue(new Error('Unexpected DB error'));
+
+            await expect(
+                service.updateShowtime(1, { movieId: sampleMovie.id, price: 99 } as UpdateShowtimeDto),
+            ).rejects.toThrow(InternalServerErrorException);
+        });
     });
 
 
@@ -157,5 +206,13 @@ describe('ShowtimeService', () => {
             mockShowtimeRepo.findOne.mockResolvedValue(null);
             await expect(service.deleteShowtime(999)).rejects.toThrow(NotFoundException);
         });
+
+        it('should throw InternalServerErrorException if deletion fails unexpectedly', async () => {
+            mockShowtimeRepo.findOne.mockResolvedValue(sampleShowtime);
+            mockShowtimeRepo.delete.mockRejectedValue(new Error('Unexpected delete failure'));
+
+            await expect(service.deleteShowtime(1)).rejects.toThrow(InternalServerErrorException);
+        });
+
     });
 });
