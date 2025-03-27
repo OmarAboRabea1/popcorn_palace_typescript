@@ -36,7 +36,7 @@ docker-compose up -d
 
 ## 🛠️ Environment Setup
 
-### 2. Create `.env` and `.env.test`
+### 2. Create `.env` and `.env.test.local`
 
 #### `.env`
 ```env
