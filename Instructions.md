@@ -47,7 +47,7 @@ DB_PASS=popcorn-palace
 DB_NAME=popcorn-palace
 ```
 
-#### `.env.test`
+#### `.env.test.local`
 ```env
 DB_HOST=localhost
 DB_PORT=5433
