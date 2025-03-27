@@ -2,7 +2,7 @@ import { IsNotEmpty, IsString, IsDate, IsNumber, Min } from 'class-validator';
 
 export class CreateShowtimeDto {
   @IsNotEmpty()
-  movie: number;
+  movieId: number;
 
   @IsNotEmpty()
   @IsString()
@@ -10,11 +10,11 @@ export class CreateShowtimeDto {
 
   @IsNotEmpty()
   @IsDate()
-  start_time: Date;
+  startTime: Date;
 
   @IsNotEmpty()
   @IsDate()
-  end_time: Date;
+  endTime: Date;
 
   @IsNumber()
   @Min(0)
@@ -22,14 +22,17 @@ export class CreateShowtimeDto {
 }
 
 export class UpdateShowtimeDto {
+  @IsNotEmpty()
+  movieId: number;
+  
   @IsString()
   theater?: string;
 
   @IsDate()
-  start_time?: Date;
+  startTime?: Date;
 
   @IsDate()
-  end_time?: Date;
+  endTime?: Date;
 
   @IsNumber()
   @Min(0)

@@ -7,6 +7,8 @@ import { Booking } from './../src/booking/entities/booking.entity';
 import { Showtime } from './../src/showtime/entities/showtime.entity';
 import { Movie } from './../src/movie/entities/movie.entity';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { movieDto } from './e2eTestSamples';
 
 describe('BookingController (e2e)', () => {
   let app: INestApplication;
@@ -14,6 +16,7 @@ describe('BookingController (e2e)', () => {
   let showtimeRepository: Repository<Showtime>;
   let movieRepository: Repository<Movie>;
   let showtimeId: number;
+  const userId = uuidv4();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -39,19 +42,13 @@ describe('BookingController (e2e)', () => {
   });
 
   beforeEach(async () => {
-    const movie = await movieRepository.save({
-      title: 'Test Movie',
-      genre: 'Action',
-      duration: 120,
-      rating: 'PG-13',
-      release_year: 2023,
-    });
+    const movie = await movieRepository.save(movieDto);
 
     const showtime = await showtimeRepository.save({
       movie,
       theater: 'IMAX 1',
-      start_time: new Date().toISOString(),
-      end_time: new Date(new Date().getTime() + 7200000).toISOString(),
+      startTime: new Date().toISOString(),
+      endTime: new Date(new Date().getTime() + 7200000).toISOString(),
       price: 15.99,
     });
 
@@ -59,31 +56,38 @@ describe('BookingController (e2e)', () => {
   });
 
   const bookingDto = {
-    customer_name: 'John Doe',
-    seat_number: 5,
+    userId,
+    seatNumber: 5,
   };
 
   it('/bookings (POST) - should create a new booking', async () => {
     const response = await request(app.getHttpServer())
       .post('/bookings')
-      .send({ ...bookingDto, showtime: showtimeId })
-      .expect(201);
+      .send({ ...bookingDto, showtimeId })
+      .expect(200);
 
-    expect(response.body).toHaveProperty('id');
-    expect(response.body.seat_number).toBe(5);
+    expect(response.body).toHaveProperty('bookingId');
+    expect(typeof response.body.bookingId).toBe('string');
   });
 
   it('/bookings (POST) - should prevent duplicate seat booking', async () => {
-    await bookingRepository.save({ ...bookingDto, showtime: { id: showtimeId } });
+    await request(app.getHttpServer())
+      .post('/bookings')
+      .send({ ...bookingDto, showtimeId })
+      .expect(200);
 
     await request(app.getHttpServer())
       .post('/bookings')
-      .send({ ...bookingDto, showtime: showtimeId })
+      .send({ ...bookingDto, showtimeId })
       .expect(409);
   });
 
   it('/bookings/:id (GET) - should fetch a booking by ID', async () => {
-    const booking = await bookingRepository.save({ ...bookingDto, showtime: { id: showtimeId } });
+    const booking = await bookingRepository.save({
+      userId,
+      seatNumber: bookingDto.seatNumber,
+      showtime: { id: showtimeId },
+    });
 
     const response = await request(app.getHttpServer())
       .get(`/bookings/${booking.id}`)
@@ -93,7 +97,11 @@ describe('BookingController (e2e)', () => {
   });
 
   it('/bookings/showtime/:showtimeId (GET) - should return all bookings for a showtime', async () => {
-    await bookingRepository.save({ ...bookingDto, showtime: { id: showtimeId } });
+    await bookingRepository.save({
+      userId,
+      seatNumber: bookingDto.seatNumber,
+      showtime: { id: showtimeId },
+    });
 
     const response = await request(app.getHttpServer())
       .get(`/bookings/showtime/${showtimeId}`)
@@ -103,7 +111,11 @@ describe('BookingController (e2e)', () => {
   });
 
   it('/bookings/:id (DELETE) - should cancel a booking', async () => {
-    const booking = await bookingRepository.save({ ...bookingDto, showtime: { id: showtimeId } });
+    const booking = await bookingRepository.save({
+      userId,
+      seatNumber: bookingDto.seatNumber,
+      showtime: { id: showtimeId },
+    });
 
     await request(app.getHttpServer())
       .delete(`/bookings/${booking.id}`)

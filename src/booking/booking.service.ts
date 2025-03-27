@@ -15,31 +15,37 @@ export class BookingService {
     private readonly showtimeRepository: Repository<Showtime>,
   ) {}
 
-  async createBooking(createBookingDto: CreateBookingDto): Promise<Booking> {
-    const showtime = await this.showtimeRepository.findOne({ where: { id: createBookingDto.showtime } });
+  async createBooking(createBookingDto: CreateBookingDto): Promise<{ bookingId: string }> {
+    const showtime = await this.showtimeRepository.findOne({ where: { id: createBookingDto.showtimeId } });
     if (!showtime) {
-      throw new NotFoundException(`Showtime with ID ${createBookingDto.showtime} not found`);
+      throw new NotFoundException(`Showtime with ID ${createBookingDto.showtimeId} not found`);
     }
-
-    // Ensure no duplicate seat bookings for the same showtime
+  
+    // Prevent seat conflict
     const existingBooking = await this.bookingRepository.findOne({
-      where: { showtime: { id: showtime.id }, seat_number: createBookingDto.seat_number },
+      where: {
+        showtime: { id: showtime.id },
+        seatNumber: createBookingDto.seatNumber,
+      },
     });
-
+  
     if (existingBooking) {
-      throw new ConflictException(`Seat ${createBookingDto.seat_number} is already booked for this showtime`);
+      throw new ConflictException(`Seat ${createBookingDto.seatNumber} is already booked for this showtime`);
     }
-
+  
     const newBooking = this.bookingRepository.create({
       showtime,
-      customer_name: createBookingDto.customer_name,
-      seat_number: createBookingDto.seat_number,
+      userId: createBookingDto.userId,
+      seatNumber: createBookingDto.seatNumber,
     });
-
-    return this.bookingRepository.save(newBooking);
+  
+    const saved = await this.bookingRepository.save(newBooking);
+  
+    return { bookingId: saved.id };
   }
+  
 
-  async getBookingById(id: number): Promise<Booking> {
+  async getBookingById(id: string): Promise<Booking> {
     const booking = await this.bookingRepository.findOne({ where: { id } });
     if (!booking) {
       throw new NotFoundException(`Booking with ID ${id} not found`);
@@ -51,7 +57,7 @@ export class BookingService {
     return this.bookingRepository.find({ where: { showtime: { id: showtimeId } } });
   }
 
-  async cancelBooking(id: number): Promise<void> {
+  async cancelBooking(id: string): Promise<void> {
     const booking = await this.getBookingById(id);
     await this.bookingRepository.remove(booking);
   }

@@ -15,50 +15,68 @@ export class ShowtimeService {
     private readonly movieRepository: Repository<Movie>,
   ) {}
 
-  async createShowtime(createShowtimeDto: CreateShowtimeDto): Promise<Showtime> {
-    const movie = await this.movieRepository.findOne({ where: { id: createShowtimeDto.movie } });
+  async createShowtime(createShowtimeDto: CreateShowtimeDto): Promise<any> {
+    const movie = await this.movieRepository.findOne({ where: { id: createShowtimeDto.movieId } });
   
     if (!movie) {
-      throw new NotFoundException(`Movie with ID ${createShowtimeDto.movie} not found`);
+      throw new NotFoundException(`Movie with ID ${createShowtimeDto.movieId} not found`);
     }
   
     // Check for overlapping showtimes in the same theater
     const overlappingShowtime = await this.showtimeRepository.createQueryBuilder('showtime')
       .where('showtime.theater = :theater', { theater: createShowtimeDto.theater })
-      .andWhere(':start_time < showtime.end_time AND :end_time > showtime.start_time', {
-        start_time: createShowtimeDto.start_time,
-        end_time: createShowtimeDto.end_time,
+      .andWhere(':startTime < showtime.endTime AND :endTime > showtime.startTime', {
+        startTime: createShowtimeDto.startTime,
+        endTime: createShowtimeDto.endTime,
       })
       .getOne();
-  
+    
     if (overlappingShowtime) {
       throw new ConflictException('Showtime overlaps with an existing showtime in the same theater');
     }
   
-    // Ensure we pass the full Movie object, not just the ID
     const newShowtime = this.showtimeRepository.create({
-      movie, // Pass the movie object instead of ID
+      movie,
       theater: createShowtimeDto.theater,
-      start_time: createShowtimeDto.start_time,
-      end_time: createShowtimeDto.end_time,
+      startTime: createShowtimeDto.startTime,
+      endTime: createShowtimeDto.endTime,
       price: createShowtimeDto.price,
     });
   
-    return this.showtimeRepository.save(newShowtime);
+    const saved = await this.showtimeRepository.save(newShowtime);
+  
+    // Return in expected format
+    return {
+      id: saved.id,
+      price: saved.price,
+      movieId: saved.movie.id,
+      theater: saved.theater,
+      startTime: saved.startTime,
+      endTime: saved.endTime,
+    };
   }
   
 
-  async getShowtimeById(id: number): Promise<Showtime> {
+  async getShowtimeById(id: number): Promise<any> {
     const showtime = await this.showtimeRepository.findOne({
       where: { id },
-      relations: ['movie'], // ✅ Ensure movie data is included
+      relations: ['movie'],
     });
   
     if (!showtime) {
       throw new NotFoundException(`Showtime with ID ${id} not found`);
     }
-    return showtime;
+  
+    return {
+      id: showtime.id,
+      price: showtime.price,
+      movieId: showtime.movie.id,
+      theater: showtime.theater,
+      startTime: showtime.startTime,
+      endTime: showtime.endTime,
+    };
   }
+  
 
 
   async getAllShowtimes(): Promise<Showtime[]> {
@@ -68,12 +86,34 @@ export class ShowtimeService {
   }
   
 
-  async updateShowtime(id: number, updateShowtimeDto: UpdateShowtimeDto): Promise<Showtime> {
-    await this.getShowtimeById(id); // Ensure showtime exists
-    await this.showtimeRepository.update(id, updateShowtimeDto);
-    return this.getShowtimeById(id);
+  async updateShowtime(id: number, updateDto: UpdateShowtimeDto): Promise<any> {
+    const showtime = await this.showtimeRepository.findOne({ where: { id } });
+    if (!showtime) {
+      throw new NotFoundException(`Showtime with ID ${id} not found`);
+    }
+  
+    const movie = await this.movieRepository.findOne({ where: { id: updateDto.movieId } });
+    if (!movie) {
+      throw new NotFoundException(`Movie with ID ${updateDto.movieId} not found`);
+    }
+  
+    const updated = this.showtimeRepository.merge(showtime, {
+      ...updateDto,
+      movie,
+    });
+  
+    const saved = await this.showtimeRepository.save(updated);
+  
+    return {
+      id: saved.id,
+      price: saved.price,
+      movieId: saved.movie.id,
+      theater: saved.theater,
+      startTime: saved.startTime,
+      endTime: saved.endTime,
+    };
   }
-
+  
   async deleteShowtime(id: number): Promise<void> {
     await this.getShowtimeById(id); // Ensure showtime exists
     await this.showtimeRepository.delete(id);

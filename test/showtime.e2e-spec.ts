@@ -6,6 +6,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Showtime } from './../src/showtime/entities/showtime.entity';
 import { Movie } from './../src/movie/entities/movie.entity';
 import { Repository } from 'typeorm';
+import { showtimeDto, testMovie } from './e2eTestSamples';
 
 describe('ShowtimeController (e2e)', () => {
   let app: INestApplication;
@@ -34,35 +35,31 @@ describe('ShowtimeController (e2e)', () => {
   });
 
   let movieId: number;
-  const testMovie = {
-    title: 'Test Movie',
-    genre: 'Action',
-    duration: 120,
-    rating: 'PG-13',
-    release_year: 2023,
-  };
 
   beforeEach(async () => {
     const movie = await movieRepository.save(testMovie);
     movieId = movie.id;
   });
 
-  const showtimeDto = {
-    movie: 1, // This will be dynamically replaced in tests
-    theater: 'IMAX 1',
-    start_time: new Date().toISOString(), // ✅ Ensure date format is correct
-    end_time: new Date(new Date().getTime() + 7200000).toISOString(), // ✅ Ensure date format is correct
-    price: 15.99,
-  };
-
   it('/showtimes (POST) - should create a new showtime', async () => {
     const response = await request(app.getHttpServer())
       .post('/showtimes')
-      .send({ ...showtimeDto, movie: movieId }) // Pass valid movie object
-      .expect(201);
+      .send({ ...showtimeDto, movie: movieId })
+      .expect(200);
 
     expect(response.body).toHaveProperty('id');
-    expect(response.body).toMatchObject({ ...showtimeDto, movie: { id: movieId } });
+    expect(response.body.movieId).toBe(movieId);
+  });
+
+  it('/showtimes/all (GET) - should return all showtimes', async () => {
+    await showtimeRepository.save({ ...showtimeDto, movie: { id: movieId } });
+
+    const response = await request(app.getHttpServer())
+      .get('/showtimes/all')
+      .expect(200);
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0].theater).toBe(showtimeDto.theater);
   });
 
   it('/showtimes/:id (GET) - should fetch a showtime by ID', async () => {
@@ -75,13 +72,13 @@ describe('ShowtimeController (e2e)', () => {
     expect(response.body.id).toBe(showtime.id);
   });
 
-  it('/showtimes/:id (PATCH) - should update a showtime', async () => {
+  it('/showtimes/update/:id (POST) - should update a showtime', async () => {
     const showtime = await showtimeRepository.save({ ...showtimeDto, movie: { id: movieId } });
 
     const updatedData = { price: 19.99 };
 
     const response = await request(app.getHttpServer())
-      .patch(`/showtimes/${showtime.id}`)
+      .post(`/showtimes/update/${showtime.id}`)
       .send(updatedData)
       .expect(200);
 

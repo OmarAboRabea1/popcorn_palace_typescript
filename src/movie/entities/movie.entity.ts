@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
 
 @Entity()
+@Unique(['title'])
 export class Movie {
   @PrimaryGeneratedColumn()
   id: number;
@@ -14,15 +15,15 @@ export class Movie {
   @Column('int')
   duration: number;
 
-  @Column()
-  rating: string;
+  @Column('float')
+  rating: number;  
 
   @Column('int')
-  release_year: number;
+  releaseYear: number;
 
-  @CreateDateColumn()
-  created_at: Date;
+  // @CreateDateColumn()
+  // created_at: Date;
 
-  @UpdateDateColumn()
-  updated_at: Date;
+  // @UpdateDateColumn()
+  // updated_at: Date;
 }

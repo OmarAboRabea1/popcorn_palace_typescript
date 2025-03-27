@@ -28,14 +28,21 @@ export class MovieService {
     return movie;
   }
 
-  async updateMovie(id: number, updateMovieDto: UpdateMovieDto): Promise<Movie> {
-    await this.getMovieById(id); // Ensure movie exists
-    await this.movieRepository.update(id, updateMovieDto);
-    return this.getMovieById(id);
-  }
+  async updateMovieByTitle(title: string, updateMovieDto: UpdateMovieDto): Promise<void> {
+    const movie = await this.movieRepository.findOne({ where: { title } });
+    if (!movie) {
+      throw new NotFoundException(`Movie with title '${title}' not found`);
+    }
+  
+    await this.movieRepository.update({ title }, updateMovieDto);
+  }  
 
-  async deleteMovie(id: number): Promise<void> {
-    await this.getMovieById(id); // Ensure movie exists
-    await this.movieRepository.delete(id);
-  }
+  async deleteMovieByTitle(title: string): Promise<void> {
+    const movie = await this.movieRepository.findOne({ where: { title } });
+    if (!movie) {
+      throw new NotFoundException(`Movie with title '${title}' not found`);
+    }
+
+    await this.movieRepository.delete({ title });
+  } 
 }

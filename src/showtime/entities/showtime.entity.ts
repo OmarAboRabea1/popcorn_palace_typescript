@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Up
 import { Movie } from '../../movie/entities/movie.entity';
 
 @Entity()
-@Unique(['theater', 'start_time'])  // Ensuring no overlapping showtimes
+@Unique(['theater'])
 export class Showtime {
   @PrimaryGeneratedColumn()
   id: number;
@@ -14,17 +14,17 @@ export class Showtime {
   theater: string;
 
   @Column('timestamp')
-  start_time: Date;
+  startTime: Date;
 
   @Column('timestamp')
-  end_time: Date;
+  endTime: Date;
 
-  @Column('decimal', { precision: 5, scale: 2 })
+  @Column('float')
   price: number;
 
-  @CreateDateColumn()
-  created_at: Date;
+  // @CreateDateColumn()
+  // created_at: Date;
 
-  @UpdateDateColumn()
-  updated_at: Date;
+  // @UpdateDateColumn()
+  // updated_at: Date;
 }

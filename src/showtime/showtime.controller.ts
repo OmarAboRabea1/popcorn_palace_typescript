@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, ParseIntPipe, HttpCode } from '@nestjs/common';
 import { ShowtimeService } from './showtime.service';
 import { CreateShowtimeDto, UpdateShowtimeDto } from './dto/showtime.dto';
 
@@ -7,11 +7,12 @@ export class ShowtimeController {
   constructor(private readonly showtimeService: ShowtimeService) {}
 
   @Post()
+  @HttpCode(200)
   createShowtime(@Body() createShowtimeDto: CreateShowtimeDto) {
     return this.showtimeService.createShowtime(createShowtimeDto);
   }
 
-  @Get()
+  @Get('all')
   getAllShowtimes() {
     return this.showtimeService.getAllShowtimes();
 }
@@ -21,7 +22,8 @@ export class ShowtimeController {
     return this.showtimeService.getShowtimeById(id);
   }
 
-  @Patch(':id')
+  @Post('update/:id')
+  @HttpCode(200)
   updateShowtime(@Param('id', ParseIntPipe) id: number, @Body() updateShowtimeDto: UpdateShowtimeDto) {
     return this.showtimeService.updateShowtime(id, updateShowtimeDto);
   }

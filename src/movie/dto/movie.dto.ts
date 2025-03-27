@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
 
 export class CreateMovieDto {
   @IsNotEmpty()
@@ -13,14 +13,15 @@ export class CreateMovieDto {
   @Min(1)
   duration: number;
 
-  @IsNotEmpty()
-  @IsString()
-  rating: string;
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  rating: number;  
 
   @IsInt()
   @Min(1900)
   @Max(new Date().getFullYear())
-  release_year: number;
+  releaseYear: number;
 }
 
 export class UpdateMovieDto {
@@ -34,11 +35,12 @@ export class UpdateMovieDto {
   @Min(1)
   duration?: number;
 
-  @IsString()
-  rating?: string;
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  rating: number;  
 
   @IsInt()
-  @Min(1900)
   @Max(new Date().getFullYear())
-  release_year?: number;
+  releaseYear?: number;
 }

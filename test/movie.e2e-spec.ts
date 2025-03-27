@@ -6,6 +6,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Movie } from './../src/movie/entities/movie.entity';
 import { Repository } from 'typeorm';
 import { Showtime } from './../src/showtime/entities/showtime.entity';
+import { movieDto, updatedMovieDto } from './e2eTestSamples';
 
 describe('MovieController (e2e)', () => {
   let app: INestApplication;
@@ -19,87 +20,93 @@ describe('MovieController (e2e)', () => {
 
     showtimeRepository = moduleFixture.get<Repository<Showtime>>(getRepositoryToken(Showtime));
     movieRepository = moduleFixture.get<Repository<Movie>>(getRepositoryToken(Movie));
-    
+
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
   afterEach(async () => {
-    await showtimeRepository.query('DELETE FROM showtime;'); // ✅ First delete showtimes
-    await movieRepository.query('DELETE FROM movie;'); // ✅ Then delete movies
+    await showtimeRepository.query('DELETE FROM showtime;');
+    await movieRepository.query('DELETE FROM movie;');
   });
-  
 
   afterAll(async () => {
     await app.close();
   });
 
-  const movieDto = {
-    title: 'Inception',
-    genre: 'Sci-Fi',
-    duration: 148,
-    rating: 'PG-13',
-    release_year: 2010,
-  };
-
   it('/movies (POST) - should create a new movie', async () => {
     const response = await request(app.getHttpServer())
       .post('/movies')
       .send(movieDto)
-      .expect(201);
-
-    expect(response.body).toMatchObject(movieDto);
-    expect(response.body).toHaveProperty('id');
-  });
-
-  it('/movies (GET) - should return an array of movies', async () => {
-    await movieRepository.save(movieDto); // Insert test data
-
-    const response = await request(app.getHttpServer())
-      .get('/movies')
       .expect(200);
 
-    expect(response.body).toBeInstanceOf(Array);
-    expect(response.body.length).toBe(1);
-    expect(response.body[0].title).toBe('Inception');
-  });
-
-  it('/movies/:id (GET) - should return a single movie', async () => {
-    const movie = await movieRepository.save(movieDto);
-  
-    const response = await request(app.getHttpServer())
-      .get(`/movies/${movie.id}`)
-      .expect(200);
-  
     expect(response.body).toMatchObject({
-      ...movieDto,
-      created_at: expect.any(String), // Accept any valid string timestamp
-      updated_at: expect.any(String),
+      id: expect.any(Number),
+      title: movieDto.title,
+      genre: movieDto.genre,
+      duration: movieDto.duration,
+      releaseYear: movieDto.releaseYear,
     });
+    expect(parseFloat(response.body.rating)).toBeCloseTo(movieDto.rating, 1);
   });
-  
 
-  it('/movies/:id (PATCH) - should update a movie', async () => {
-    const movie = await movieRepository.save(movieDto);
-    const updatedData = { title: 'Interstellar' };
+  it('/movies/all (GET) - should return all movies with correct response format', async () => {
+    await movieRepository.save(movieDto);
 
     const response = await request(app.getHttpServer())
-      .patch(`/movies/${movie.id}`)
-      .send(updatedData)
+      .get('/movies/all')
       .expect(200);
 
-    expect(response.body.title).toBe('Interstellar');
+    expect(Array.isArray(response.body)).toBe(true);
+    const result = response.body[0];
+    expect(result).toMatchObject({
+      id: expect.any(Number),
+      title: movieDto.title,
+      genre: movieDto.genre,
+      duration: movieDto.duration,
+      releaseYear: movieDto.releaseYear,
+    });
+    expect(parseFloat(result.rating)).toBeCloseTo(movieDto.rating, 1);
   });
 
-  it('/movies/:id (DELETE) - should delete a movie', async () => {
+  it('/movies/update/:title (POST) - should update and persist changes', async () => {
+    // 1. Save the original movie
     const movie = await movieRepository.save(movieDto);
+  
+    // 2. Update it by title
+    await request(app.getHttpServer())
+      .post(`/movies/update/${movie.title}`)
+      .send(updatedMovieDto)
+      .expect(200);
+  
+    // 3. Query the updated movie from the database
+    const updated = await movieRepository.findOne({ where: { title: updatedMovieDto.title } });
+  
+    // 4. Assert new values
+    expect(updated).toBeDefined();
+    expect(updated.title).toBe(updatedMovieDto.title);
+    expect(updated.genre).toBe(updatedMovieDto.genre);
+    expect(updated.duration).toBe(updatedMovieDto.duration);
+    expect(updated.releaseYear).toBe(updatedMovieDto.releaseYear);
+    expect(parseFloat(updated.rating.toString())).toBeCloseTo(updatedMovieDto.rating, 1);
+  
+    // 5. Make sure it's not the old one
+    expect(updated.title).not.toBe(movieDto.title);
+  });
+  
+  
+  it('/movies/:title (DELETE) - should delete a movie and ensure it’s gone', async () => {
+    await movieRepository.save(movieDto);
 
     await request(app.getHttpServer())
-      .delete(`/movies/${movie.id}`)
+      .delete(`/movies/${movieDto.title}`)
       .expect(200);
 
     const response = await request(app.getHttpServer())
-      .get(`/movies/${movie.id}`)
-      .expect(404);
+      .get('/movies/all')
+      .expect(200);
+
+    const found = response.body.find((m: any) => m.title === movieDto.title);
+    expect(found).toBeUndefined();
   });
 });

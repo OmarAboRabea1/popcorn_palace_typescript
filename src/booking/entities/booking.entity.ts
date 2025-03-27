@@ -2,20 +2,20 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Unique, CreateDateCo
 import { Showtime } from '../../showtime/entities/showtime.entity';
 
 @Entity()
-@Unique(['showtime', 'seat_number']) // ✅ Prevent duplicate bookings for the same seat
+@Unique(['showtime', 'seatNumber'])
 export class Booking {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid') // UUID instead of number
+  id: string;
 
-  @ManyToOne(() => Showtime, (showtime) => showtime.id, { eager: true })
+  @ManyToOne(() => Showtime, (showtime) => showtime.id, { eager: true, onDelete: 'CASCADE' })
   showtime: Showtime;
 
   @Column()
-  customer_name: string;
+  userId: string;
 
   @Column()
-  seat_number: number; // ✅ Ensure unique seat assignment
+  seatNumber: number;
 
-  @CreateDateColumn()
-  booked_at: Date;
+  // @CreateDateColumn()
+  // bookedAt: Date;
 }

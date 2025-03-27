@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, ParseIntPipe, HttpCode } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto, UpdateMovieDto } from './dto/movie.dto';
 
@@ -7,11 +7,12 @@ export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
   @Post()
+  @HttpCode(200)
   createMovie(@Body() createMovieDto: CreateMovieDto) {
     return this.movieService.createMovie(createMovieDto);
   }
 
-  @Get()
+  @Get('all')
   getAllMovies() {
     return this.movieService.getAllMovies();
   }
@@ -21,16 +22,17 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
-  @Patch(':id')
-  updateMovie(
-    @Param('id', ParseIntPipe) id: number,
+  @Post('update/:title')
+  @HttpCode(200)
+  updateMovieByTitle(
+    @Param('title') title: string,
     @Body() updateMovieDto: UpdateMovieDto,
   ) {
-    return this.movieService.updateMovie(id, updateMovieDto);
+    return this.movieService.updateMovieByTitle(title, updateMovieDto);
   }
 
-  @Delete(':id')
-  deleteMovie(@Param('id', ParseIntPipe) id: number) {
-    return this.movieService.deleteMovie(id);
+  @Delete(':title')
+  deleteMovieByTitle(@Param('title') title: string) {
+    return this.movieService.deleteMovieByTitle(title);
   }
 }
